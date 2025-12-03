@@ -427,3 +427,103 @@ ggplot(bw_aug, aes(x = pred, y = resid)) +
 
 ```
 
+Commentary: Residual diagnostics
+
+The residuals-versus-fitted plot shows that residuals are roughly centered around zero over the range of fitted birthweights, with no strong curvature. This suggests that the linear functional form is appropriate.
+
+There may be higher variability in residuals at larger fitted birthweights, indicating some mild heteroskedasticity, but there are no clear patterns or extreme outliers that would suggest serious violations of model assumptions. 
+
+```{r}
+# Comparison model 1: length + gestational age only
+m1 =
+  lm(bwt ~ blength + gaweeks, data = bw_df)
+
+# Comparison model 2: all interactions among sex, head circumference, and length
+m2 =
+  lm(bwt ~ babysex * bhead * blength, data = bw_df)
+
+```
+
+Commentary: 
+Two models fitted for comparison:
+
+A simple model using only birth length and gestational age (blength + gaweeks) as predictors. This serves as a baseline, biologically motivated model focusing on size and maturity at birth.
+
+A more complex interaction model that includes baby sex, head circumference, and length, along with all two-way and three-way interactions (babysex * bhead * blength). This model is intentionally flexible and tests whether including high-order interactions among key infant anthropometrics substantially improves prediction.
+
+```{r}
+set.seed(123)
+
+cv_df =
+  crossv_mc(bw_df, n = 100, test = 0.2) |>
+  mutate(
+    train = map(train, as_tibble),
+    test  = map(test, as_tibble),
+
+    fit_prop = map(train, ~ lm(
+      bwt ~ babysex + bhead + blength + gaweeks +
+        ppbmi + wtgain + momage + mrace,
+      data = .x
+    )),
+    fit_m1 = map(train, ~ lm(bwt ~ blength + gaweeks, data = .x)),
+    fit_m2 = map(train, ~ lm(bwt ~ babysex * bhead * blength, data = .x)),
+
+    rmse_prop = map2_dbl(fit_prop, test,
+                         ~ sqrt(mean((predict(.x, newdata = .y) - .y$bwt)^2))),
+    rmse_m1   = map2_dbl(fit_m1,   test,
+                         ~ sqrt(mean((predict(.x, newdata = .y) - .y$bwt)^2))),
+    rmse_m2   = map2_dbl(fit_m2,   test,
+                         ~ sqrt(mean((predict(.x, newdata = .y) - .y$bwt)^2)))
+  )
+
+```
+
+
+```{r}
+rmse_long =
+  cv_df |>
+  select(rmse_prop, rmse_m1, rmse_m2) |>
+  pivot_longer(
+    cols = everything(),
+    names_to = "model",
+    values_to = "rmse"
+  ) |>
+  mutate(
+    model = recode(
+      model,
+      rmse_prop = "Proposed model",
+      rmse_m1   = "Length + gestational age",
+      rmse_m2   = "Sex × head × length (all interactions)"
+    )
+  )
+
+ggplot(rmse_long, aes(x = model, y = rmse)) +
+  geom_boxplot() +
+  labs(
+    title = "Cross-validated RMSE for Birthweight Models",
+    x = "Model",
+    y = "RMSE on test set"
+  )
+
+```
+
+Table for the data: 
+```{r}
+rmse_long |>
+  group_by(model) |>
+  summarize(
+    mean_rmse = mean(rmse),
+    sd_rmse   = sd(rmse)
+  )
+
+```
+
+# Cross-validated prediction error"
+
+I used Monte Carlo cross-validation with 100 random splits, each holding out 20% of the data as a test set. For each split, I fit the proposed model, the simple length + gestational age model, and the full interaction model, and then computed RMSE on the held-out observations.
+
+The boxplot of RMSE values shows that the proposed model generally has the lowest average RMSE, indicating the best predictive performance on unseen data. The simple model using only blength and gaweeks has consistently higher RMSE, suggesting that it omits important predictors of birthweight.
+
+The fully interactive model (babysex * bhead * blength) does not clearly outperform the proposed model and tends to have similar or slightly worse RMSE, with more variability across splits. This pattern suggests that the added complexity from high-order interactions does not meaningfully improve prediction and may introduce some overfitting.
+
+
