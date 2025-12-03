@@ -6,6 +6,7 @@ date: "2025-12-03"
 
 ## PROBLEM 1 
 
+This is just for my reference: 
 ```{r}
 getwd()
 list.files()
@@ -23,7 +24,6 @@ homicide_df =
 Loading in and cleaning the data: 
 
 ```{r}
-### Problem 1
 
 library(tidyverse)
 library(janitor)
@@ -35,24 +35,24 @@ homicide_df =
   read_csv("/Users/karolinawiesiolek/Desktop/Data_Science/Homework3/homicide-data.csv") |>
   clean_names() |>
   mutate(
-    # Create "City, ST" variable
+    # Creating "City, ST" variable
     city_state = str_c(city, ", ", state),
     
     # Binary outcome: 1 = solved, 0 = not solved
     solved = if_else(disposition == "Closed by arrest", 1, 0),
     
-    # Make sure age is numeric
+    # Age as numeric
     victim_age = as.numeric(victim_age),
     
-    # Clean race and sex
+    # race and sex
     victim_race = str_to_lower(victim_race),
     victim_sex  = factor(victim_sex)
   ) |>
-  # Drop cities with missing race reporting or wrong Tulsa
+  # dropping unwanted cities 
   filter(
     !city_state %in% c("Dallas, TX", "Phoenix, AZ", "Kansas City, MO", "Tulsa, AL")
   ) |>
-  # Only white / black victims
+  
   filter(victim_race %in% c("white", "black"))
 
 ```
@@ -69,16 +69,16 @@ This is expected because the original dataset contains entries such as "Unknown"
 These cases are automatically removed during model fitting.
 
 Following the assignment instructions, we omitted cities:
-   + Dallas, TX
-   + Phoenix, AZ
-   + Kansas City, MO
-   + Tulsa, AL
+  1. Dallas, TX
+  2. Phoenix, AZ
+  3. Kansas City, MO
+  4. Tulsa, AL
 
 These cities either do not report victim race or are known data entry errors. I restricted the analysis to homicides where the victim's race is recorded as white or black, because these are the groups with the most complete and consistent reporting across cities.
 
 
 ```{r}
-# Filter to Baltimore
+# Baltimore only
 baltimore_df =
   homicide_df |>
   filter(city_state == "Baltimore, MD")
@@ -91,7 +91,7 @@ baltimore_fit =
     family = binomial()
   )
 
-# Tidy, exponentiate to get odds ratios + CIs
+# Tidy, odds ratios + CIs
 baltimore_results =
   baltimore_fit |>
   tidy(conf.int = TRUE, exponentiate = TRUE)
@@ -106,10 +106,10 @@ baltimore_or_male
 
 ```
 
-Commentary: Baltimore Logistic Regression
+# Commentary: Baltimore Logistic Regression
 I fit a logistic regression model predicting whether a homicide in Baltimore, MD was solved, using victim age, victim sex, and victim race as predictors. The resulting adjusted odds ratio (OR) comparing male to female victims is:
-  + OR = 0.426
-  + 95% CI: 0.324 to 0.558
+ 1. OR = 0.426
+ 2. 95% CI: 0.324 to 0.558
 
 Because the OR is well below 1, this indicates that, after adjusting for race and age, homicides involving male victims were significantly less likely to be solved compared to those involving female victims in Baltimore.
 
@@ -173,7 +173,7 @@ ggplot(city_or_df, aes(x = city_state, y = estimate)) +
 ```
 
 
-Commentary: Interpretation of the Odds Ratio Plot
+# Commentary: Interpretation of the Odds Ratio Plot
 
 The plot displays adjusted odds ratios and confidence intervals for all cities, sorted from lowest to highest OR. Patterns emerge:
 
@@ -192,7 +192,7 @@ Cities like Baltimore and Chicago show particularly strong effects (ORs well bel
 
 ## PROBLEM 2 
 
-
+loading in the dataset here 
 ```{r}
 library(p8105.datasets)
 data("weather_df")
@@ -209,10 +209,10 @@ set.seed(123)
 boot_fn = function(df) {
   fit = lm(tmax ~ tmin + prcp, data = df)
   
-  # Extract r^2
+  # Extracting  r^2
   r2 = broom::glance(fit)$r.squared
   
-  # Extract slope estimates
+  # Extracting slope estimates
   coefs = broom::tidy(fit)
   beta1 = coefs$estimate[coefs$term == "tmin"]
   beta2 = coefs$estimate[coefs$term == "prcp"]
@@ -225,7 +225,7 @@ boot_fn = function(df) {
 
 ```
 
-Bootstrap function 
+Bootstrap function: 
 ```{r}
 set.seed(123)
 
@@ -315,7 +315,7 @@ Because neither statistic has a simple theoretical sampling distribution, I used
 # Commentary 2. Distribution of Bootstrap Estimates
 The bootstrap histogram of the coefficient of determination is unimodal and tightly concentrated, indicating that the model’s explanatory power is stable across resamples. The distribution has fairly low spread, suggesting that the estimated R² is precise and does not vary dramatically with sampling fluctuations.
 
-In contrast, the distribution of the product of the estimated slopes for tmin and prcp shows more variability and is noticeably more skewed.
+The distribution of the product of the estimated slopes for tmin and prcp shows more variability and is noticeably more skewed.
 
 Since this statistic is the product of two slope estimates, it naturally inherits more instability, especially because the precipitation effect (β₂) is small and sometimes close to zero.
 This results in a distribution that is wider and more asymmetric than the distribution of R².
@@ -332,18 +332,17 @@ The interval for B1B2 is wider and spans values near zero, reflecting higher sam
 ## PROBLEM 3 
 
 ```{r}
-## Problem 3
-
+# making sure that i have all libraries 
 library(tidyverse)
 library(janitor)
 library(modelr)
 
-# Load raw data
+# data load 
 bw_raw =
   read_csv("/Users/karolinawiesiolek/Desktop/Data_Science/Homework3/birthweight.csv") |>
   clean_names()
 
-# Print column names so we know what the dataset contains
+# Print column names 
 names(bw_raw)
 
 # Standardize all variable names to match homework instructions
@@ -383,11 +382,12 @@ bw_df =
                      labels = c("absent","present"))
   )
 
-# Check missingness
+
 bw_df |> summarize(across(everything(), \(x) sum(is.na(x))))
 
 ```
 
+# Proposed birthweight model
 ```{r}
 # Proposed birthweight model
 bw_model =
@@ -409,7 +409,7 @@ I constructed a linear regression model for birthweight (bwt) that reflects know
 
 These predictors are good because they are plausibly related to birthweight and commonly used in perinatal epidemiology. The model aims to balance interpretability and predictive performance without including an excessive number of interactions or weaker predictors.
 
-Residual vs fitted plot 
+# Residual vs fitted plot: 
 ```{r}
 bw_aug =
   bw_df |>
@@ -427,7 +427,7 @@ ggplot(bw_aug, aes(x = pred, y = resid)) +
 
 ```
 
-Commentary: Residual diagnostics
+# Commentary: Residual diagnostics
 
 The residuals-versus-fitted plot shows that residuals are roughly centered around zero over the range of fitted birthweights, with no strong curvature. This suggests that the linear functional form is appropriate.
 
@@ -444,7 +444,7 @@ m2 =
 
 ```
 
-Commentary: 
+# Commentary: 
 Two models fitted for comparison:
 
 A simple model using only birth length and gestational age (blength + gaweeks) as predictors. This serves as a baseline, biologically motivated model focusing on size and maturity at birth.
