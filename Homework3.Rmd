@@ -518,7 +518,7 @@ rmse_long |>
 
 ```
 
-# Cross-validated prediction error"
+# Cross-validated prediction error:
 
 I used Monte Carlo cross-validation with 100 random splits, each holding out 20% of the data as a test set. For each split, I fit the proposed model, the simple length + gestational age model, and the full interaction model, and then computed RMSE on the held-out observations.
 
