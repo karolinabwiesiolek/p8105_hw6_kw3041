@@ -331,3 +331,99 @@ The interval for B1B2 is wider and spans values near zero, reflecting higher sam
 
 ## PROBLEM 3 
 
+```{r}
+## Problem 3
+
+library(tidyverse)
+library(janitor)
+library(modelr)
+
+# Load raw data
+bw_raw =
+  read_csv("/Users/karolinawiesiolek/Desktop/Data_Science/Homework3/birthweight.csv") |>
+  clean_names()
+
+# Print column names so we know what the dataset contains
+names(bw_raw)
+
+# Standardize all variable names to match homework instructions
+bw_df =
+  bw_raw |>
+  rename(
+    babysex  = matches("babysex|sex$|sex_baby"),
+    bhead    = matches("bhead|head|headcirc"),
+    blength  = matches("blength|length"),
+    bwt      = matches("bwt|birthweight|weight"),
+    delwt    = matches("delwt|delivery_weight"),
+    fincome  = matches("fincome|income"),
+    frace    = matches("frace|father_race"),
+    gaweeks  = matches("gaweeks|gestage|gest_weeks"),
+    malform  = matches("malform|malformation"),
+    menarche = matches("menarche"),
+    mheigth  = matches("mheight|mother_height"),
+    momage   = matches("momage|mother_age"),
+    mrace    = matches("mrace|mother_race"),
+    parity   = matches("parity"),
+    pnumlbw  = matches("pnumlbw|prev_low_bw"),
+    pnumgsa  = matches("pnumgsa|prev_small_gest_age"),
+    ppbmi    = matches("ppbmi|prepreg_bmi"),
+    ppwt     = matches("ppwt|prepreg_weight"),
+    smoken   = matches("smoken|cigs|cigarettes"),
+    wtgain   = matches("wtgain|weight_gain")
+  ) |>
+  mutate(
+    babysex = factor(babysex, levels = c(1, 2), labels = c("male", "female")),
+    frace   = factor(frace,
+                     levels = c(1,2,3,4,8,9),
+                     labels = c("white", "black", "asian", "puerto_rican", "other", "unknown")),
+    mrace   = factor(mrace,
+                     levels = c(1,2,3,4,8),
+                     labels = c("white", "black", "asian", "puerto_rican", "other")),
+    malform = factor(malform, levels = c(0,1),
+                     labels = c("absent","present"))
+  )
+
+# Check missingness
+bw_df |> summarize(across(everything(), \(x) sum(is.na(x))))
+
+```
+
+```{r}
+# Proposed birthweight model
+bw_model =
+  lm(
+    bwt ~ babysex + bhead + blength + gaweeks +
+      ppbmi + wtgain + momage + mrace,
+    data = bw_df
+  )
+
+summary(bw_model)
+
+```
+
+I constructed a linear regression model for birthweight (bwt) that reflects known biological and demographic determinants of fetal growth. The model includes:
+1. Infant size and maturity: head circumference (bhead), length at birth (blength), and gestational age in weeks (gaweeks)
+2. Maternal body composition and weight change: pre-pregnancy BMI (ppbmi) and pregnancy weight gain (wtgain)
+3. Maternal demographic characteristics: age at delivery (momage) and race (mrace)
+4. Infant sex: babysex
+
+These predictors are good because they are plausibly related to birthweight and commonly used in perinatal epidemiology. The model aims to balance interpretability and predictive performance without including an excessive number of interactions or weaker predictors.
+
+Residual vs fitted plot 
+```{r}
+bw_aug =
+  bw_df |>
+  add_predictions(bw_model) |>
+  add_residuals(bw_model)
+
+ggplot(bw_aug, aes(x = pred, y = resid)) +
+  geom_point(alpha = 0.4) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(
+    title = "Residuals vs Fitted Values for Proposed Birthweight Model",
+    x = "Fitted birthweight",
+    y = "Residuals"
+  )
+
+```
+
